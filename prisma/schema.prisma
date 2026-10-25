@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Połączenie bez poolera do migracji (Neon/Supabase); lokalnie ten sam adres co DATABASE_URL
+  directUrl = env("DIRECT_URL")
+}
+
+enum AccountType {
+  PRIVATE
+  COMPANY
+  DEALER
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  ARCHIVED
+}
+
+enum SaleType {
+  FIXED
+  AUCTION
+}
+
+enum Condition {
+  WORKING
+  NEEDS_REPAIR
+  DAMAGED
+  FOR_PARTS
+}
+
+enum AuctionMode {
+  // licytację wystawia sprzedawca
+  SELLER
+  // licytację prowadzi 3core.pl (wadium, opłata aukcyjna)
+  HOUSE
+}
+
+enum AuctionStatus {
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  name         String
+  phone        String?
+  companyName  String?
+  nip          String?
+  accountType  AccountType @default(PRIVATE)
+  verified     Boolean     @default(false)
+  role         Role        @default(USER)
+  createdAt    DateTime    @default(now())
+  listings     Listing[]
+  favorites    Favorite[]
+  bids         Bid[]
+  proxyBids    ProxyBid[]
+  wonAuctions  Auction[]   @relation("AuctionWinner")
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+}
+
+model Listing {
+  id           String        @id @default(cuid())
+  title        String
+  category     String
+  brand        String
+  model        String
+  year         Int
+  // godziny pracy maszyny (licznik godzin / godziny pod wrzecionem)
+  hours        Int?
+  keyParam     String?
+  // sterowanie CNC, np. Fanuc 0i-TF, Heidenhain TNC 640, Siemens 828D
+  controlSystem String?
+  // cena stała albo aktualna cena licytacji (aktualizowana przy każdej ofercie)
+  priceNet     Int
+  vatInvoice   Boolean       @default(true)
+  saleType     SaleType      @default(FIXED)
+  condition    Condition     @default(WORKING)
+  weightKg     Int?
+  // dział "Maszyny w cenie złomu": cena za kg nie wyższa niż próg z src/lib/scrap.ts
+  scrapPrice   Boolean       @default(false)
+  voivodeship  String
+  city         String
+  description  String
+  serialNumber String?
+  status       ListingStatus @default(ACTIVE)
+  views        Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images       Image[]
+  favorites    Favorite[]
+  auction      Auction?
+
+  @@index([status, category])
+  @@index([status, saleType])
+  @@index([status, scrapPrice])
+  @@index([status, createdAt])
+  @@index([voivodeship])
+}
+
+model Image {
+  id        String  @id @default(cuid())
+  url       String
+  position  Int     @default(0)
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Favorite {
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+}
+
+model Auction {
+  id              String        @id @default(cuid())
+  listingId       String        @unique
+  listing         Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  mode            AuctionMode   @default(SELLER)
+  status          AuctionStatus @default(LIVE)
+  startPrice      Int
+  // cena minimalna, poniżej której sprzedawca nie musi sprzedać (niewidoczna dla kupujących)
+  reservePrice    Int?
+  currentPrice    Int
+  bidCount        Int           @default(0)
+  leaderId        String?
+  // opłata aukcyjna doliczana kupującemu, w promilach (50 = 5%); 0 dla aukcji sprzedawców
+  buyerPremiumBp  Int           @default(0)
+  depositAmount   Int?
+  startsAt        DateTime      @default(now())
+  endsAt          DateTime
+  originalEndsAt  DateTime
+  winnerId        String?
+  winner          User?         @relation("AuctionWinner", fields: [winnerId], references: [id])
+  finalPrice      Int?
+  createdAt       DateTime      @default(now())
+  bids            Bid[]
+  proxyBids       ProxyBid[]
+
+  @@index([status, endsAt])
+}
+
+// Widoczna historia licytacji
+model Bid {
+  id        String   @id @default(cuid())
+  auctionId String
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  // oferta złożona automatycznie z limitu (licytacja do kwoty maksymalnej)
+  auto      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([auctionId, createdAt])
+}
+
+// Ukryty limit licytującego: system podbija za niego do tej kwoty
+model ProxyBid {
+  auctionId String
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  maxAmount Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([auctionId, userId])
+}
