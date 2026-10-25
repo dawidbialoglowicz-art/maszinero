@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  PRIVATE
+  COMPANY
+  DEALER
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  ARCHIVED
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  name         String
+  phone        String?
+  companyName  String?
+  nip          String?
+  accountType  AccountType @default(PRIVATE)
+  verified     Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  listings     Listing[]
+  favorites    Favorite[]
+}
+
+model Listing {
+  id           String        @id @default(cuid())
+  title        String
+  category     String
+  brand        String
+  model        String
+  year         Int
+  hours        Int?
+  mileageKm    Int?
+  keyParam     String?
+  priceNet     Int
+  vatInvoice   Boolean       @default(true)
+  voivodeship  String
+  city         String
+  description  String
+  serialNumber String?
+  status       ListingStatus @default(ACTIVE)
+  views        Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images       Image[]
+  favorites    Favorite[]
+
+  @@index([status, category])
+  @@index([status, createdAt])
+  @@index([voivodeship])
+}
+
+model Image {
+  id        String  @id @default(cuid())
+  url       String
+  position  Int     @default(0)
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Favorite {
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+}

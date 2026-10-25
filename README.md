@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Maszinero.pl
 
-## Getting Started
+Platforma ogłoszeń maszyn budowlanych, rolniczych i przemysłowych w Polsce.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router, Server Actions), PostgreSQL + Prisma, logowanie e-mail/hasło (sesja JWT w ciasteczku), zdjęcia w Vercel Blob.
+
+## Co działa
+
+- Strona główna z wyszukiwarką, kategoriami i najnowszymi ogłoszeniami
+- Lista ogłoszeń z filtrami (kategoria, województwo, cena, rok, motogodziny, dealer, VAT), sortowaniem i stronicowaniem
+- Strona ogłoszenia: galeria, dane techniczne, cena netto/brutto, szacunkowa rata leasingu, kontakt ze sprzedającym
+- Rejestracja (osoba prywatna / firma z NIP) i logowanie
+- Dodawanie ogłoszeń ze zdjęciami (do 20, JPG/PNG/WebP, maks. 8 MB)
+- „Moje ogłoszenia”: wyświetlenia, obserwujący, oznaczanie jako sprzedane, usuwanie
+- Obserwowane ogłoszenia
+
+## Uruchomienie lokalne
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env        # uzupełnij DATABASE_URL i SESSION_SECRET
+npm install
+npm run db:migrate          # tworzy tabele
+npm run db:seed             # opcjonalnie: 16 ogłoszeń demo (hasło kont demo: demo12345)
+npm run dev                 # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Bez `BLOB_READ_WRITE_TOKEN` zdjęcia zapisują się lokalnie w katalogu `uploads/`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Wdrożenie (Vercel + baza Neon + domena z Hostingera)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Baza danych.** Załóż darmowe konto na [neon.tech](https://neon.tech), utwórz projekt w regionie Frankfurt (`eu-central-1`) i skopiuj connection string (`postgresql://...`).
+2. **Vercel.** Na [vercel.com](https://vercel.com) zaloguj się przez GitHub, wybierz *Add New → Project* i zaimportuj repozytorium `maszinero`.
+3. **Zmienne środowiskowe** (w Vercelu: *Settings → Environment Variables*):
+   - `DATABASE_URL`: connection string z Neon
+   - `SESSION_SECRET`: losowy ciąg min. 32 znaki (np. wynik `openssl rand -base64 32`)
+4. **Zdjęcia.** W projekcie Vercel: *Storage → Create → Blob*. Vercel sam doda `BLOB_READ_WRITE_TOKEN`.
+5. **Deploy.** Build sam uruchamia migracje bazy (`prisma migrate deploy`). Dane demo możesz wgrać lokalnie: `DATABASE_URL="<z Neon>" npm run db:seed`.
+6. **Domena maszinero.pl.** W Vercelu: *Settings → Domains → Add* i wpisz `maszinero.pl` oraz `www.maszinero.pl`. Potem w panelu Hostingera (*Domeny → maszinero.pl → DNS / Nameservers*):
+   - usuń istniejące rekordy **A** i **CNAME** dla `@` i `www`,
+   - dodaj rekord **A**: nazwa `@`, wartość `76.76.21.21`,
+   - dodaj rekord **CNAME**: nazwa `www`, wartość `cname.vercel-dns.com`.
 
-## Learn More
+   Dokładne wartości Vercel pokaże przy dodawaniu domeny; jeśli różnią się od powyższych, użyj tych z Vercela. Propagacja DNS trwa zwykle od kilku minut do kilku godzin, a certyfikat HTTPS Vercel wystawi automatycznie.
 
-To learn more about Next.js, take a look at the following resources:
+## Co dalej
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Weryfikacja dealerów (dziś pole `verified` ustawia się ręcznie w bazie)
+- Płatności za pakiety (np. Przelewy24 / Stripe)
+- Wiadomości między kupującym a sprzedającym w serwisie
+- Edycja ogłoszeń, reset hasła e-mailem, regulamin i polityka prywatności (RODO)
