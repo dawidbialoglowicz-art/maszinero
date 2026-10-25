@@ -9,8 +9,11 @@ const publicSans = Public_Sans({ variable: "--font-public-sans", subsets: ["lati
 const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin", "latin-ext"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
-  title: { default: "Maszinero – maszyny budowlane, rolnicze i przemysłowe", template: "%s | Maszinero" },
-  description: "Ogłoszenia maszyn używanych i nowych od zweryfikowanych dealerów z całej Polski. Koparki, ciągniki, ładowarki, wózki widłowe, dźwigi i obrabiarki CNC.",
+  metadataBase: new URL(process.env.SITE_URL ?? "https://maszinero.pl"),
+  title: { default: "Maszinero: maszyny przemysłowe, ogłoszenia i aukcje", template: "%s | Maszinero" },
+  description: "Ogłoszenia i aukcje używanych maszyn przemysłowych w Polsce: obrabiarki CNC, prasy, lasery, wtryskarki, sprężarki, wózki widłowe. Dział maszyn w cenie złomu.",
+  publisher: "3core.pl",
+  openGraph: { siteName: "Maszinero.pl", locale: "pl_PL", type: "website" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

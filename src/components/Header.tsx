@@ -13,22 +13,29 @@ export async function Header() {
       <div className="wrap">
         <Link className="logo" href="/"><Logo /></Link>
         <nav className="nav" aria-label="Główna nawigacja">
-          <Link href="/ogloszenia">Kup maszynę</Link>
-          <Link href="/dodaj">Sprzedaj</Link>
-          {user && <Link href="/moje">Moje ogłoszenia</Link>}
+          <Link href="/ogloszenia">Maszyny</Link>
+          <Link href="/aukcje">Aukcje</Link>
+          <Link href="/cena-zlomu">W cenie złomu</Link>
+          {user && <Link href="/moje">Moje</Link>}
           {user && <Link href="/obserwowane">Obserwowane</Link>}
         </nav>
         <div className="act">
           {user ? (
-            <form action={logout}>
-              <button className="btn btn-ghost" type="submit">Wyloguj</button>
-            </form>
+            <>
+              <Link className="btn btn-ghost" href="/konto">Konto</Link>
+              <form action={logout}><button className="btn btn-ghost hide-sm" type="submit">Wyloguj</button></form>
+            </>
           ) : (
             <Link className="btn btn-ghost" href="/logowanie">Zaloguj</Link>
           )}
-          <Link className="btn btn-signal" href="/dodaj">+ Dodaj<span className="hide-sm">&nbsp;ogłoszenie</span></Link>
+          <Link className="btn btn-signal" href="/dodaj">+ Sprzedaj<span className="hide-sm">maszynę</span></Link>
         </div>
       </div>
+      <nav className="subnav" aria-label="Działy">
+        <Link href="/ogloszenia">Maszyny</Link>
+        <Link href="/aukcje">Aukcje</Link>
+        <Link href="/cena-zlomu">W cenie złomu</Link>
+      </nav>
     </header>
   );
 }
@@ -37,11 +44,15 @@ export function Footer() {
   return (
     <footer className="foot">
       <div className="wrap">
-        <div><div className="logo"><Logo /></div><p>Platforma ogłoszeń maszyn budowlanych, rolniczych i przemysłowych w Polsce.</p></div>
-        <div><h4>Kupujący</h4><ul><li><Link href="/ogloszenia">Wszystkie ogłoszenia</Link></li><li><Link href="/obserwowane">Obserwowane</Link></li></ul></div>
-        <div><h4>Sprzedający</h4><ul><li><Link href="/dodaj">Dodaj ogłoszenie</Link></li><li><Link href="/moje">Moje ogłoszenia</Link></li><li><Link href="/#cennik">Cennik</Link></li></ul></div>
-        <div><h4>Maszinero</h4><ul><li>Regulamin</li><li>Polityka prywatności</li><li>Kontakt</li></ul></div>
+        <div>
+          <div className="logo"><Logo /></div>
+          <p>Ogłoszenia i aukcje maszyn przemysłowych w Polsce. Serwis prowadzi <a href="https://3core.pl" rel="noopener">3core.pl</a>.</p>
+        </div>
+        <div><h4>Kupujący</h4><ul><li><Link href="/ogloszenia">Maszyny na sprzedaż</Link></li><li><Link href="/aukcje">Aukcje</Link></li><li><Link href="/cena-zlomu">Maszyny w cenie złomu</Link></li><li><Link href="/obserwowane">Obserwowane</Link></li></ul></div>
+        <div><h4>Sprzedający</h4><ul><li><Link href="/dodaj">Sprzedaj maszynę</Link></li><li><Link href="/moje">Moje ogłoszenia i aukcje</Link></li><li><Link href="/konto">Konto</Link></li><li><Link href="/#cennik">Cennik</Link></li></ul></div>
+        <div><h4>Maszinero</h4><ul><li>Regulamin (w przygotowaniu)</li><li>Polityka prywatności (w przygotowaniu)</li><li><a href="https://3core.pl" rel="noopener">3core.pl</a></li></ul></div>
       </div>
+      <div className="wrap legal">© {new Date().getFullYear()} 3core.pl · Maszinero.pl</div>
     </footer>
   );
 }

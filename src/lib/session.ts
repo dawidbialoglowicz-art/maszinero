@@ -41,7 +41,7 @@ export const currentUser = cache(async () => {
     if (!payload.sub) return null;
     return await db.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, name: true, email: true, accountType: true, verified: true, companyName: true, phone: true },
+      select: { id: true, name: true, email: true, accountType: true, verified: true, companyName: true, phone: true, role: true },
     });
   } catch {
     return null;
