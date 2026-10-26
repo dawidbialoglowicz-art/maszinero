@@ -18,6 +18,7 @@ export async function Header() {
           <Link href="/cena-zlomu">W cenie złomu</Link>
           {user && <Link href="/moje">Moje</Link>}
           {user && <Link href="/obserwowane">Obserwowane</Link>}
+          {user?.role === "ADMIN" && <Link href="/admin">Panel</Link>}
         </nav>
         <div className="act">
           {user ? (
@@ -35,6 +36,7 @@ export async function Header() {
         <Link href="/ogloszenia">Maszyny</Link>
         <Link href="/aukcje">Aukcje</Link>
         <Link href="/cena-zlomu">W cenie złomu</Link>
+        {user?.role === "ADMIN" && <Link href="/admin">Panel</Link>}
       </nav>
     </header>
   );

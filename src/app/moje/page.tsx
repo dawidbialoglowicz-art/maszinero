@@ -10,7 +10,7 @@ import { ListingActions } from "@/components/ListingActions";
 
 export const metadata: Metadata = { title: "Moje ogłoszenia i aukcje" };
 
-const STATUS = { ACTIVE: ["Aktywne", "ok"], SOLD: ["Sprzedane", "mute"], ARCHIVED: ["Archiwum", "mute"] } as const;
+const STATUS = { ACTIVE: ["Aktywne", "ok"], SOLD: ["Sprzedane", "mute"], ARCHIVED: ["Archiwum", "mute"], HIDDEN: ["Wstrzymane przez moderację", "mute"] } as const;
 
 export default async function Page() {
   const user = await requireUser("/moje");

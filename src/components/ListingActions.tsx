@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { deleteListing, setListingStatus } from "@/lib/actions";
 
-type Props = { id: string; status: "ACTIVE" | "SOLD" | "ARCHIVED"; auction: { live: boolean; bids: number } | null };
+type Props = { id: string; status: "ACTIVE" | "SOLD" | "ARCHIVED" | "HIDDEN"; auction: { live: boolean; bids: number } | null };
 
 export function ListingActions({ id, status, auction }: Props) {
   const [pending, start] = useTransition();
@@ -15,6 +15,7 @@ export function ListingActions({ id, status, auction }: Props) {
     setConfirm(false);
   });
   const locked = auction !== null && auction.bids > 0;
+  const hidden = status === "HIDDEN";
 
   if (confirm) {
     return (
@@ -27,7 +28,9 @@ export function ListingActions({ id, status, auction }: Props) {
   }
   return (
     <div className="acts">
-      {auction ? (
+      {hidden ? (
+        <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}>Sprawdzamy ogłoszenie, do tego czasu nie jest widoczne</span>
+      ) : auction ? (
         auction.live && !locked && <button className="btn btn-plain btn-sm" disabled={pending} onClick={() => run(() => setListingStatus(id, "ARCHIVED"))}>Przerwij aukcję</button>
       ) : status === "ACTIVE" ? (
         <button className="btn btn-plain btn-sm" disabled={pending} onClick={() => run(() => setListingStatus(id, "SOLD"))}>Oznacz jako sprzedane</button>

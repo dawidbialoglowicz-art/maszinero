@@ -24,15 +24,19 @@ const include = {
 
 const getListing = cache(async (id: string) => (id.length > 40 ? null : db.listing.findUnique({ where: { id }, include })));
 
-/** Ogłoszenie nieaktywne widzi tylko właściciel; zakończona aukcja pozostaje widoczna ze swoim wynikiem. */
-function visibleTo(l: NonNullable<Awaited<ReturnType<typeof getListing>>>, userId?: string) {
-  return l.status === "ACTIVE" || l.userId === userId || (l.auction !== null && l.auction.status === "ENDED");
+/**
+ * Ogłoszenie nieaktywne widzi tylko właściciel (i administrator); zakończona aukcja pozostaje widoczna
+ * ze swoim wynikiem, chyba że wstrzymała ją moderacja.
+ */
+function visibleTo(l: NonNullable<Awaited<ReturnType<typeof getListing>>>, me?: { id: string; role: string } | null) {
+  return l.status === "ACTIVE" || l.userId === me?.id || me?.role === "ADMIN"
+    || (l.status !== "HIDDEN" && l.auction !== null && l.auction.status === "ENDED");
 }
 
 export async function generateMetadata({ params }: PageProps<"/ogloszenia/[id]">): Promise<Metadata> {
   const l = await getListing((await params).id);
   const me = await currentUser();
-  if (!l || !visibleTo(l, me?.id)) return {};
+  if (!l || !visibleTo(l, me)) return {};
   return { title: `${l.title}, ${l.year}: ${pln(l.priceNet)}`, description: l.description.slice(0, 160) };
 }
 
@@ -45,7 +49,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
   }
   const l = pre?.auction?.status === "LIVE" && pre.auction.endsAt <= new Date() ? await getListingFresh(id) : pre;
   const [me, favs] = await Promise.all([currentUser(), favoriteIds()]);
-  if (!l || !visibleTo(l, me?.id)) notFound();
+  if (!l || !visibleTo(l, me)) notFound();
   if (me?.id !== l.userId && l.status === "ACTIVE") {
     await db.listing.update({ where: { id }, data: { views: { increment: 1 } } });
   }
@@ -107,7 +111,8 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
             : a.bidCount > 0 ? "Aukcja zakończona bez sprzedaży: nie osiągnięto ceny minimalnej." : "Aukcja zakończona bez ofert."}
         </p>
       )}
-      {l.status !== "ACTIVE" && !a && <p className="alert err">To ogłoszenie nie jest widoczne publicznie ({l.status === "SOLD" ? "sprzedane" : "zarchiwizowane"}).</p>}
+      {l.status === "HIDDEN" && <p className="alert err">To ogłoszenie jest wstrzymane przez moderację i nie jest widoczne publicznie.</p>}
+      {l.status !== "ACTIVE" && l.status !== "HIDDEN" && !a && <p className="alert err">To ogłoszenie nie jest widoczne publicznie ({l.status === "SOLD" ? "sprzedane" : "zarchiwizowane"}).</p>}
       <div className="detail">
         <div style={{ display: "grid", gap: 24, minWidth: 0 }}>
           <div style={{ position: "relative" }}>

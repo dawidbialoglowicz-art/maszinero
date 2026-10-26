@@ -24,6 +24,8 @@ enum ListingStatus {
   ACTIVE
   SOLD
   ARCHIVED
+  // wstrzymane przez moderację (agent albo administrator), niewidoczne publicznie
+  HIDDEN
 }
 
 enum SaleType {
@@ -68,6 +70,10 @@ model User {
   bids         Bid[]
   proxyBids    ProxyBid[]
   wonAuctions  Auction[]   @relation("AuctionWinner")
+  // ostatnie sprawdzenie NIP w Białej liście VAT
+  nipCheckedAt DateTime?
+  agentActions AgentAction[] @relation("AgentActionUser")
+  decisions    AgentAction[] @relation("AgentActionDecider")
 }
 
 model LoginAttempt {
@@ -105,6 +111,8 @@ model Listing {
   serialNumber String?
   status       ListingStatus @default(ACTIVE)
   views        Int           @default(0)
+  // kiedy agent sprawdził ogłoszenie (null = jeszcze nie sprawdzone)
+  moderatedAt  DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   userId       String
@@ -112,6 +120,7 @@ model Listing {
   images       Image[]
   favorites    Favorite[]
   auction      Auction?
+  agentActions AgentAction[]
 
   @@index([status, category])
   @@index([status, saleType])
@@ -192,4 +201,70 @@ model ProxyBid {
   updatedAt DateTime @updatedAt
 
   @@id([auctionId, userId])
+}
+
+// ---------- agent AI ----------
+
+enum AgentActionKind {
+  // agent od razu wstrzymał ogłoszenie (oczywisty spam/oszustwo); zatwierdzenie archiwizuje, odrzucenie przywraca
+  HIDE_LISTING
+  // ogłoszenie do sprawdzenia przez człowieka; zatwierdzenie wstrzymuje ogłoszenie
+  FLAG_LISTING
+  // propozycja zmiany kategorii; zatwierdzenie ją wprowadza
+  CHANGE_CATEGORY
+  // firma potwierdzona w Białej liście VAT; zatwierdzenie nadaje odznakę dealera
+  VERIFY_COMPANY
+  // problem z NIP-em firmy (nie istnieje, nieczynny VAT, inna nazwa)
+  FLAG_COMPANY
+}
+
+enum AgentActionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Kolejka decyzji agenta do zatwierdzenia w panelu /admin
+model AgentAction {
+  id          String            @id @default(cuid())
+  kind        AgentActionKind
+  status      AgentActionStatus @default(PENDING)
+  // krótki opis dla administratora i uzasadnienie agenta
+  summary     String
+  reasoning   String
+  // dane potrzebne do wykonania decyzji, np. { category: "tokarki" }
+  payload     Json?
+  listingId   String?
+  listing     Listing?          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?             @relation("AgentActionUser", fields: [userId], references: [id], onDelete: Cascade)
+  decidedById String?
+  decidedBy   User?             @relation("AgentActionDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt   DateTime?
+  createdAt   DateTime          @default(now())
+
+  @@index([status, createdAt])
+}
+
+// Dziennik wywołań Claude API: koszt i błędy
+model AgentRun {
+  id           String   @id @default(cuid())
+  task         String
+  subjectId    String?
+  model        String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  // koszt w mikrodolarach (1 USD = 1 000 000)
+  costMicroUsd Int      @default(0)
+  error        String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Poranny raport agenta
+model AgentReport {
+  id        String   @id @default(cuid())
+  body      String
+  createdAt DateTime @default(now())
 }

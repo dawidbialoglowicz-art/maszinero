@@ -62,16 +62,24 @@ Testy licytacji uruchamiają się tylko wtedy, gdy nazwa bazy w `DATABASE_URL` z
 
 Aukcje zamykają się same przy wyświetlaniu stron. Dodatkowo raz na dobę robi to Vercel Cron (`vercel.json`). Na płatnym planie Vercela możesz ustawić częstszy harmonogram.
 
-## Administracja (na razie bez panelu)
+## Administracja i agent AI
 
-- Oznaczenie zweryfikowanego dealera: `UPDATE "User" SET verified = true WHERE email = '…';`
-- Rola administratora: `UPDATE "User" SET role = 'ADMIN' WHERE email = '…';` (przygotowane pod panel i aukcje prowadzone przez 3core.pl)
+Panel `/admin` widzą tylko konta z rolą administratora: `UPDATE "User" SET role = 'ADMIN' WHERE email = '…';`
+
+Agent (`src/lib/agent/`) pomaga prowadzić serwis i **niczego ważnego nie robi sam**: każda propozycja trafia do kolejki decyzji w panelu.
+
+- **Moderacja ogłoszeń.** Po dodaniu ogłoszenia agent (Claude API) ocenia w tle treść i zdjęcia: spam, oszustwa, zdjęcia niepasujące do opisu, podejrzane ceny, kontakt w opisie, złą kategorię, zawyżoną masę w dziale złomu. Ogłoszenie publikuje się od razu; oczywisty spam agent wstrzymuje (status `HIDDEN`) do Twojej decyzji. Ogłoszeń zweryfikowanych dealerów i aukcji z ofertami sam nie wstrzymuje.
+- **Weryfikacja firm.** Po rejestracji z NIP-em sprawdza firmę w Białej liście VAT (bezpłatne API Ministerstwa Finansów) i proponuje odznakę dealera albo ostrzega (brak w wykazie, inna nazwa, nieczynny VAT). Działa bez klucza Claude API.
+- **Poranny raport.** Codziennie o 5:00 UTC (Vercel Cron `/api/cron/agent`) agent nadrabia niesprawdzone ogłoszenia i firmy i zapisuje raport z uwagami w panelu.
+- **Koszty.** Każde wywołanie Claude API trafia do dziennika (`AgentRun`), a panel pokazuje koszt z ostatnich 30 dni. Ustaw też miesięczny limit wydatków w [console.anthropic.com](https://console.anthropic.com).
+
+Konfiguracja na Vercelu: `ANTHROPIC_API_KEY` (bez niego działa tylko sprawdzanie NIP) i opcjonalnie `AGENT_MODEL` (domyślnie `claude-opus-5-5`; tańsze: `claude-sonnet-5-5`, `claude-haiku-5-5`). Zdjęcia muszą być dostępne pod publicznym adresem (Vercel Blob), żeby agent mógł je obejrzeć.
 
 ## Co dalej
 
 - Aukcje prowadzone przez 3core.pl jako dom aukcyjny: model danych jest gotowy (`mode`, `buyerPremiumBp`, `depositAmount`), brakuje panelu i płatności wadium.
 - Powiadomienia e-mail (przebicie oferty, koniec aukcji, wygrana), np. przez Resend.
-- Panel administratora: weryfikacja dealerów, moderacja ogłoszeń.
+- Agent: asystent sprzedawcy (opis ze zdjęć, import ofert dealerów), czat dla kupujących, pilnowanie aukcji, raport e-mailem.
 - Płatności za pakiety (Przelewy24 / Stripe). Cennik na stronie jest na razie informacyjny.
 - Edycja ogłoszeń, reset hasła, regulamin i polityka prywatności (RODO). Treść prawna musi przygotować lub sprawdzić prawnik.
 - Wynajem powierzchni przemysłowych jako osobny dział (`/hale`).

@@ -177,7 +177,7 @@ test("logowanie: złe hasło i ochrona przed przekierowaniem na obcą stronę", 
 });
 
 test("strony chronione wymagają logowania", async ({ page }) => {
-  for (const p of ["/dodaj", "/moje", "/konto", "/obserwowane"]) {
+  for (const p of ["/dodaj", "/moje", "/konto", "/obserwowane", "/admin"]) {
     await page.goto(p);
     await expect(page).toHaveURL(new RegExp(`/logowanie\\?next=${encodeURIComponent(p)}`));
   }
@@ -189,5 +189,34 @@ test("telefon: brak poziomego przewijania na kluczowych stronach", async ({ page
     await page.goto(p);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, p).toBeLessThanOrEqual(0);
+  }
+});
+
+test("panel administratora: tylko dla administratora, decyzja agenta znika z kolejki", async ({ page }) => {
+  const { PrismaClient } = await import("@prisma/client");
+  const db = new PrismaClient();
+  try {
+    await db.user.update({ where: { email: "demo-kupujacy@maszinero.pl" }, data: { role: "USER" } });
+    await login(page, "demo-kupujacy@maszinero.pl");
+    const res = await page.goto("/admin");
+    expect(res?.status()).toBe(404);
+
+    const listing = await db.listing.findFirstOrThrow({ where: { status: "ACTIVE", user: { email: "demo-dealer@maszinero.pl" } } });
+    const summary = `E2E: podejrzana cena ${uniq()}`;
+    await db.agentAction.create({ data: { kind: "FLAG_LISTING", summary, reasoning: "• podejrzana cena: test", listingId: listing.id } });
+    await db.user.update({ where: { email: "demo-kupujacy@maszinero.pl" }, data: { role: "ADMIN" } });
+
+    await page.goto("/admin");
+    await expect(page.getByRole("heading", { name: "Panel administratora" })).toBeVisible();
+    const row = page.locator(".row", { hasText: summary });
+    await expect(row).toBeVisible();
+    await row.getByRole("button", { name: "W porządku" }).click();
+    // decyzja przechodzi z kolejki do „Ostatnich decyzji”
+    await expect(row.getByRole("button")).toHaveCount(0);
+    await expect(row).toContainText("Odrzucone");
+    expect((await db.listing.findUniqueOrThrow({ where: { id: listing.id } })).status).toBe("ACTIVE");
+  } finally {
+    await db.user.update({ where: { email: "demo-kupujacy@maszinero.pl" }, data: { role: "USER" } });
+    await db.$disconnect();
   }
 });

@@ -115,6 +115,7 @@ h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
 .tag.mute { background: var(--line); color: var(--ink); }
 .tag.auc { background: var(--auc); color: var(--surface); }
 .tag.scrap { background: var(--scrap-soft); color: var(--scrap); }
+.tag.err { background: var(--danger-soft); color: var(--danger); }
 .cond { font-size: 12px; font-weight: 600; color: var(--scrap); }
 time.urgent { color: var(--danger); }
 .ok-text { color: var(--ok); font-weight: 600; }

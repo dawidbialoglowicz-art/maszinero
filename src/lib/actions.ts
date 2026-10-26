@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -13,6 +14,8 @@ import { isListingBlobUrl, normalizeNip, normalizePhone, parseAmount, parseIntPa
 import { qualifiesForScrap, SCRAP_MAX_PLN_PER_KG } from "./scrap";
 import { AUCTION_DURATIONS_DAYS } from "./auction-rules";
 import { placeBid } from "./auctions";
+import { moderateListing } from "./agent/moderation";
+import { checkCompany } from "./agent/nip";
 
 export type FormState = { error?: string; fields?: Record<string, string> } | undefined;
 
@@ -69,6 +72,8 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
       data: { name: d.name, email: d.email, passwordHash: await bcrypt.hash(d.password, 12), phone, accountType: d.accountType, companyName, nip },
     });
     await createSession(user.id);
+    // agent sprawdza NIP w Białej liście VAT po wysłaniu odpowiedzi, użytkownik nie czeka
+    if (nip) after(() => checkCompany(user.id));
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return { error: "Konto z tym adresem e-mail już istnieje", fields: echo(fd) };
@@ -207,6 +212,8 @@ export async function createListing(_: FormState, fd: FormData): Promise<FormSta
       }),
     },
   });
+  // agent moderuje ogłoszenie w tle; oczywisty spam wstrzymuje do decyzji administratora
+  after(() => moderateListing(listing.id));
   revalidatePath("/");
   redirect(`/ogloszenia/${listing.id}?dodano=1`);
 }
@@ -220,6 +227,7 @@ export async function setListingStatus(id: string, status: "ACTIVE" | "SOLD" | "
   if (!idSchema.safeParse(id).success || !statusSchema.safeParse(status).success) return { error: "Nieprawidłowe dane" };
   const l = await db.listing.findFirst({ where: { id, userId: user.id }, include: { auction: true } });
   if (!l) return { error: "Nie znaleziono ogłoszenia" };
+  if (l.status === "HIDDEN") return { error: "Ogłoszenie jest wstrzymane przez moderację. Napisz do nas, jeśli to pomyłka." };
   if (l.auction) {
     // aukcji z ofertami nie można przerwać, a zakończonej nie da się wznowić
     if (l.auction.status === "LIVE" && l.auction.bidCount > 0) return { error: "Aukcji z ofertami nie można przerwać" };
