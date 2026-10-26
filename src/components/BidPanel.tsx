@@ -46,7 +46,7 @@ export function BidPanel(p: Props) {
         <div className="big-price">{zl(p.currentPrice)}</div>
         <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>netto
           {p.reserveSet && <> · <span className={p.reserveMet ? "ok-text" : undefined}>{p.reserveMet ? "cena minimalna osiągnięta" : "cena minimalna nieosiągnięta"}</span></>}
-          {p.buyerPremiumBp > 0 && <> · opłata aukcyjna {(p.buyerPremiumBp / 10).toString().replace(".", ",")}%</>}
+          {p.buyerPremiumBp > 0 && <> · opłata aukcyjna {(p.buyerPremiumBp / 100).toString().replace(".", ",")}%</>}
         </div>
       </div>
 

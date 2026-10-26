@@ -6,6 +6,7 @@ import { favoriteIds } from "@/lib/favorites";
 import { finalizeEndedAuctions } from "@/lib/auctions";
 import { SCRAP_MAX_PLN_PER_KG } from "@/lib/scrap";
 import { num } from "@/lib/format";
+import { freePeriod } from "@/lib/launch";
 import { ListingCard } from "@/components/ListingCard";
 import { MachineIcon } from "@/components/Icons";
 import { CategoryOptions, VoivodeshipOptions } from "@/components/Selects";
@@ -14,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   await finalizeEndedAuctions();
+  const free = freePeriod();
   const now = new Date();
   const [auctions, scrap, latest, counts, total, liveAuctions, scrapCount, favs] = await Promise.all([
     db.listing.findMany({ where: { status: "ACTIVE", saleType: "AUCTION", auction: { is: { status: "LIVE", endsAt: { gt: now } } } }, select: cardSelect, orderBy: { auction: { endsAt: "asc" } }, take: 4 }),
@@ -109,15 +111,27 @@ export default async function Home() {
           <div>
             <h2>Sprzedajesz maszyny z zakładu? Dotrzyj do kupujących z całej Polski.</h2>
             <p>Wystaw maszynę z ceną stałą albo na aukcji. Konto firmowe pokazuje nazwę firmy i NIP, a po weryfikacji dostajesz oznaczenie dealera.</p>
+            {free.active && <p className="free-note"><b>Na start bez opłat {free.label}.</b> Wystawianie ogłoszeń i aukcji nic nie kosztuje. O cenniku uprzedzimy przed końcem okresu startowego.</p>}
             <Link className="btn btn-signal" href="/dodaj">Sprzedaj maszynę</Link>
           </div>
           <div className="plans">
-            <div className="plan"><h3>Start</h3><strong className="mono">0 zł</strong><small>w okresie startowym</small><ul><li>ogłoszenia i aukcje</li><li>do 20 zdjęć</li></ul></div>
-            <div className="plan hl"><h3>Firma</h3><strong className="mono">149 zł</strong><small>netto / mies. (wkrótce)</small><ul><li>wyróżnienia</li><li>statystyki</li><li>oznaczenie dealera</li></ul></div>
-            <div className="plan"><h3>Dealer</h3><strong className="mono">499 zł</strong><small>netto / mies. (wkrótce)</small><ul><li>bez limitu</li><li>import CSV/XML</li><li>wizytówka firmy</li></ul></div>
+            <Plan name="Start" price={0} free={free.active} items={["ogłoszenia i aukcje", "do 20 zdjęć"]} />
+            <Plan name="Firma" price={149} free={free.active} hl items={["wyróżnienia", "statystyki", "oznaczenie dealera"]} />
+            <Plan name="Dealer" price={499} free={free.active} items={["bez limitu", "import CSV/XML", "wizytówka firmy"]} />
           </div>
         </div>
       </section>
     </>
+  );
+}
+
+function Plan({ name, price, free, hl, items }: { name: string; price: number; free: boolean; hl?: boolean; items: string[] }) {
+  return (
+    <div className={hl ? "plan hl" : "plan"}>
+      <h3>{name}</h3>
+      <strong className="mono">{free ? 0 : price} zł</strong>
+      <small>{price === 0 ? "pakiet podstawowy" : free ? `potem ${price} zł netto / mies.` : "netto / mies."}</small>
+      <ul>{items.map((i) => <li key={i}>{i}</li>)}</ul>
+    </div>
   );
 }
