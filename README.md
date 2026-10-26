@@ -35,7 +35,7 @@ Bez `BLOB_READ_WRITE_TOKEN` zdjęcia zapisują się lokalnie w katalogu `uploads
 
 ```bash
 npm run lint && npm run typecheck
-DATABASE_URL=postgresql://…/maszinero_test npm test   # 81 testów jednostkowych + 9 testów licytacji na bazie
+DATABASE_URL=postgresql://…/maszinero_test npm test   # 86 testów jednostkowych + 9 testów licytacji na bazie
 npm run build && npm run db:seed && npm run test:e2e  # 10 scenariuszy end-to-end w Playwright
 ```
 
@@ -49,7 +49,8 @@ Testy licytacji uruchamiają się tylko wtedy, gdy nazwa bazy w `DATABASE_URL` z
    - `DATABASE_URL`, `DIRECT_URL`: adresy z Neon,
    - `SESSION_SECRET`: losowy ciąg min. 32 znaki (`openssl rand -base64 32`),
    - `CRON_SECRET`: drugi losowy ciąg (zabezpiecza zadanie zamykające aukcje),
-   - `SITE_URL`: `https://maszinero.pl`.
+   - `SITE_URL`: `https://maszinero.pl`,
+   - `FREE_UNTIL`: ostatni dzień okresu bez opłat, np. `2027-04-30` (6 miesięcy od startu). Strona główna i formularz dodawania pokazują wtedy datę. Bez tej zmiennej piszą „przez pierwsze 6 miesięcy”, a po tej dacie cennik pokazuje zwykłe ceny.
 4. **Zdjęcia.** *Storage → Create → Blob*. Vercel sam doda `BLOB_READ_WRITE_TOKEN`.
 5. **Deploy.** Build sam uruchamia migracje bazy (`prisma migrate deploy`). Uwaga: podglądy PR-ów też je uruchamiają, więc dla podglądów ustaw osobną bazę (w Neon gałąź `preview`).
 6. **Dane demo na produkcji.** Seed jest tam zablokowany. Jeśli chcesz pokazać serwis z przykładami, uruchom go ze swojego komputera: `ALLOW_DEMO_SEED=1 DEMO_PASSWORD=<silne hasło> DATABASE_URL=<z Neon> npm run db:seed`. Przed startem usuń konta `demo-*@maszinero.pl`.
@@ -72,6 +73,6 @@ Aukcje zamykają się same przy wyświetlaniu stron. Dodatkowo raz na dobę robi
 - Aukcje prowadzone przez 3core.pl jako dom aukcyjny: model danych jest gotowy (`mode`, `buyerPremiumBp`, `depositAmount`), brakuje panelu i płatności wadium.
 - Powiadomienia e-mail (przebicie oferty, koniec aukcji, wygrana), np. przez Resend.
 - Panel administratora: weryfikacja dealerów, moderacja ogłoszeń.
-- Płatności za pakiety (Przelewy24 / Stripe). Cennik na stronie jest na razie informacyjny.
+- Płatności za pakiety (Przelewy24 / Stripe) po okresie startowym (`FREE_UNTIL`). Cennik na stronie jest na razie informacyjny.
 - Edycja ogłoszeń, reset hasła, regulamin i polityka prywatności (RODO). Treść prawna musi przygotować lub sprawdzić prawnik.
 - Wynajem powierzchni przemysłowych jako osobny dział (`/hale`).
